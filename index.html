@@ -1,0 +1,1350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Create Order Demo</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --panel-strong: #ffffff;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --accent: #2563eb;
+      --accent-deep: #1d4ed8;
+      --accent-soft: rgba(37, 99, 235, 0.08);
+      --green: #15803d;
+      --green-soft: rgba(21, 128, 61, 0.08);
+      --warn: #b45309;
+      --shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+      --radius-xl: 16px;
+      --radius-lg: 12px;
+      --radius-md: 10px;
+      --font-display: "Segoe UI", sans-serif;
+      --font-body: "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font-body);
+      color: var(--ink);
+      background: var(--bg);
+    }
+
+    .shell {
+      width: min(1200px, calc(100% - 32px));
+      margin: 24px auto;
+      position: relative;
+    }
+
+    .hero {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: clamp(1.75rem, 3vw, 2.25rem);
+      letter-spacing: -0.02em;
+    }
+
+    .hero p {
+      margin: 10px 0 0;
+      color: var(--muted);
+      max-width: 680px;
+      line-height: 1.5;
+    }
+
+    .status-pill {
+      padding: 12px 16px;
+      border-radius: 999px;
+      background: #fff;
+      border: 1px solid var(--line);
+      min-width: 200px;
+    }
+
+    .status-label {
+      display: block;
+      font-size: 0.76rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .status-value {
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: minmax(0, 1.55fr) minmax(320px, 1fr);
+      gap: 20px;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      border-radius: var(--radius-xl);
+    }
+
+    .left-panel {
+      padding: 20px;
+    }
+
+    .top-tools {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .tool-card,
+    .summary-card,
+    .items-card {
+      background: var(--panel-strong);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      padding: 16px;
+    }
+
+    .tool-card label,
+    .summary-heading,
+    .section-title {
+      display: block;
+      margin-bottom: 10px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    input,
+    textarea,
+    button {
+      font: inherit;
+    }
+
+    input,
+    textarea {
+      width: 100%;
+      border: 1px solid #d1d5db;
+      background: white;
+      color: var(--ink);
+      border-radius: 10px;
+      padding: 12px 14px;
+      transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+    }
+
+    input:focus,
+    textarea:focus {
+      outline: none;
+      border-color: rgba(37, 99, 235, 0.45);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+
+    textarea {
+      min-height: 104px;
+      resize: vertical;
+      line-height: 1.45;
+    }
+
+    .hint {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 0.88rem;
+      min-height: 1.2em;
+    }
+
+    .hint.success {
+      color: var(--green);
+    }
+
+    .hint.warning {
+      color: var(--warn);
+    }
+
+    .btn {
+      border: none;
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 180ms ease, box-shadow 180ms ease, opacity 180ms ease, background 180ms ease;
+    }
+
+    .btn:hover:not(:disabled) {
+      transform: translateY(-1px);
+    }
+
+    .btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.52;
+    }
+
+    .btn-primary {
+      color: white;
+      background: var(--accent);
+    }
+
+    .btn-secondary {
+      color: var(--ink);
+      background: #f9fafb;
+      border: 1px solid var(--line);
+    }
+
+    .btn-ghost {
+      background: var(--accent-soft);
+      color: var(--accent-deep);
+    }
+
+    .product-list {
+      display: grid;
+      gap: 14px;
+    }
+
+    .product-card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+      overflow: hidden;
+      transition: transform 220ms ease, border-color 220ms ease;
+    }
+
+    .product-card.ai-hit {
+      border-color: rgba(37, 99, 235, 0.35);
+    }
+
+    .product-top {
+      display: grid;
+      grid-template-columns: 88px minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+    }
+
+    .product-image {
+      width: 72px;
+      height: 72px;
+      border-radius: 12px;
+      object-fit: cover;
+      background: #f3f4f6;
+      border: 1px solid var(--line);
+    }
+
+    .product-name {
+      margin: 0;
+      font-size: 1.1rem;
+    }
+
+    .product-subline {
+      margin-top: 6px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .variant-panel {
+      display: grid;
+      gap: 10px;
+    }
+
+    .product-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .option-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .option-label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      flex: 0 0 auto;
+    }
+
+    .option-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .option-chip {
+      padding: 9px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .option-chip.recommended {
+      border-color: rgba(37, 99, 235, 0.28);
+      background: #f8fbff;
+    }
+
+    .option-chip.selected {
+      border-color: var(--accent);
+      background: rgba(37, 99, 235, 0.1);
+      color: var(--accent-deep);
+    }
+
+    .option-chip.selected.recommended {
+      border-color: var(--accent);
+    }
+
+    .option-chip:disabled {
+      cursor: not-allowed;
+      opacity: 0.48;
+      background: #f9fafb;
+    }
+
+    .product-inline-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: space-between;
+    }
+
+    .product-main {
+      min-width: 0;
+      display: grid;
+      gap: 8px;
+    }
+
+    .product-statuses {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .variant-note {
+      font-size: 0.78rem;
+      color: var(--accent);
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .variant-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .add-button {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      line-height: 1;
+    }
+
+    .availability {
+      font-size: 0.88rem;
+      font-weight: 700;
+    }
+
+    .availability.available {
+      color: var(--green);
+    }
+
+    .availability.unavailable {
+      color: var(--muted);
+    }
+
+    .empty-state {
+      padding: 32px 18px;
+      text-align: center;
+      color: var(--muted);
+      border: 1px dashed var(--line);
+      border-radius: 12px;
+      background: #fff;
+    }
+
+    .right-panel {
+      display: grid;
+      gap: 16px;
+      position: sticky;
+      top: 24px;
+    }
+
+    .selected-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .selected-item {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+    }
+
+    .selected-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: start;
+    }
+
+    .selected-title {
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    .selected-variant {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .selected-price {
+      margin: 12px 0;
+      font-weight: 700;
+    }
+
+    .stepper {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px;
+      background: #f3f4f6;
+      border-radius: 999px;
+    }
+
+    .stepper button {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      border: none;
+      background: white;
+      border: 1px solid var(--line);
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+
+    .stepper-value {
+      min-width: 26px;
+      text-align: center;
+      font-weight: 700;
+    }
+
+    .selected-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .shipping-input-wrap {
+      position: relative;
+    }
+
+    .currency-tag {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: 0.9rem;
+      pointer-events: none;
+    }
+
+    .shipping-input {
+      padding-right: 62px;
+    }
+
+    .summary-grid {
+      display: grid;
+      gap: 10px;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      font-size: 0.96rem;
+    }
+
+    .summary-row strong {
+      font-size: 1.06rem;
+    }
+
+    .summary-row.total {
+      margin-top: 4px;
+      padding-top: 12px;
+      border-top: 1px solid var(--line);
+    }
+
+    .action-stack {
+      display: grid;
+      gap: 12px;
+    }
+
+    .subtext {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 0.87rem;
+      line-height: 1.45;
+    }
+
+    .toast {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      padding: 14px 16px;
+      background: rgba(31, 41, 55, 0.96);
+      color: white;
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      opacity: 0;
+      transform: translateY(16px);
+      pointer-events: none;
+      transition: opacity 220ms ease, transform 220ms ease;
+      max-width: min(360px, calc(100vw - 32px));
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(18, 21, 29, 0.42);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      z-index: 50;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal {
+      width: min(460px, 100%);
+      background: #fff;
+      border-radius: 16px;
+      padding: 22px;
+      box-shadow: 0 18px 40px rgba(18, 21, 29, 0.16);
+      border: 1px solid var(--line);
+    }
+
+    .modal h2 {
+      margin: 0 0 10px;
+      font-size: 1.4rem;
+    }
+
+    .modal p {
+      margin: 0 0 18px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    @media (max-width: 980px) {
+      .board {
+        grid-template-columns: 1fr;
+      }
+
+      .right-panel {
+        position: static;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .shell {
+        width: min(100% - 20px, 100%);
+        margin: 18px auto;
+      }
+
+      .hero {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .top-tools {
+        grid-template-columns: 1fr;
+      }
+
+      .product-top {
+        grid-template-columns: 72px minmax(0, 1fr);
+      }
+
+      .product-inline-controls {
+        align-items: stretch;
+      }
+
+      .selected-actions {
+        align-items: stretch;
+      }
+
+      .selected-actions .btn-ghost {
+        width: 100%;
+      }
+
+      .modal-actions {
+        flex-direction: column-reverse;
+      }
+
+      .modal-actions .btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="hero">
+      <div>
+        <h1>AI Create Order</h1>
+        <p>Search products fast, let AI narrow the likely matches, confirm variants, and create a clean admin-side order summary without implying payment or customer confirmation.</p>
+      </div>
+      <div class="status-pill">
+        <span class="status-label">Panel Status</span>
+        <span class="status-value" id="statusValue">No Items</span>
+      </div>
+    </header>
+
+    <main class="board">
+      <section class="panel left-panel">
+        <div class="top-tools">
+          <div class="tool-card">
+            <label for="searchInput">Search Products</label>
+            <input id="searchInput" type="text" placeholder="Search by product name..." autocomplete="off">
+            <p class="hint" id="searchHint">Type to filter products by name.</p>
+          </div>
+          <div class="tool-card">
+            <label for="aiInput">AI Parse</label>
+            <textarea id="aiInput" placeholder="Paste customer message to suggest products..."></textarea>
+            <div class="input-row">
+              <button class="btn btn-primary" id="parseButton" type="button">Parse</button>
+            </div>
+            <p class="hint" id="aiHint">AI suggestions only assist selection. They do not add items automatically.</p>
+          </div>
+        </div>
+
+        <div class="section-title">Product List</div>
+        <div class="product-list" id="productList"></div>
+      </section>
+
+      <aside class="right-panel">
+        <section class="items-card">
+          <div class="section-title">Selected Items</div>
+          <div class="selected-list" id="selectedList"></div>
+        </section>
+
+        <section class="summary-card">
+          <div class="summary-heading">Shipping Fee</div>
+          <div class="shipping-input-wrap">
+            <input id="shippingInput" class="shipping-input" type="number" min="0" step="1" placeholder="Enter shipping fee" inputmode="numeric">
+            <span class="currency-tag">FCFA</span>
+          </div>
+          <p class="hint" id="shippingHint">Shipping fee not entered.</p>
+        </section>
+
+        <section class="summary-card">
+          <div class="summary-heading">Total Amount</div>
+          <div class="summary-grid">
+            <div class="summary-row">
+              <span>Items Total</span>
+              <span id="itemsTotalValue">0 FCFA</span>
+            </div>
+            <div class="summary-row">
+              <span>Shipping Fee</span>
+              <span id="shippingTotalValue">0 FCFA</span>
+            </div>
+            <div class="summary-row total">
+              <strong>Order Total</strong>
+              <strong id="orderTotalValue">0 FCFA</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="summary-card">
+          <div class="summary-heading">Actions</div>
+          <div class="action-stack">
+            <button class="btn btn-secondary" id="copyButton" type="button">Copy Price Message</button>
+            <button class="btn btn-primary" id="createButton" type="button">Create Order</button>
+          </div>
+          <p class="subtext" id="actionsHint">Copying the message does not mean it was sent. Creating the order does not mean payment is completed.</p>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <div class="modal-backdrop" id="modalBackdrop" role="presentation">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <h2 id="modalTitle">Create order?</h2>
+      <p>This will create an order with the selected items and shipping fee. Please make sure the customer has confirmed the order details.</p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="cancelCreateButton" type="button">Cancel</button>
+        <button class="btn btn-primary" id="confirmCreateButton" type="button">Confirm Create</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const makeProductSvg = (title, colors) => {
+      const [start, end] = colors;
+      const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320">
+          <defs>
+            <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="${start}" />
+              <stop offset="100%" stop-color="${end}" />
+            </linearGradient>
+          </defs>
+          <rect width="320" height="320" rx="44" fill="url(#g)" />
+          <circle cx="250" cy="78" r="48" fill="rgba(255,255,255,0.18)" />
+          <path d="M40 250 C110 205 180 205 280 250" stroke="rgba(255,255,255,0.4)" stroke-width="12" fill="none" />
+          <text x="28" y="220" fill="#fff8ef" font-size="34" font-weight="700" font-family="Avenir Next, Segoe UI, sans-serif">${title}</text>
+        </svg>
+      `;
+      return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+    };
+
+    const products = [
+      {
+        id: "product_red_dress",
+        name: "Red Dress",
+        imageUrl: makeProductSvg("Red Dress", ["#e2664f", "#7f1d1d"]),
+        variants: [
+          { id: "variant_red_dress_s", color: "Red", size: "S", price: 12000, available: true },
+          { id: "variant_red_dress_m", color: "Red", size: "M", price: 12000, available: true },
+          { id: "variant_red_dress_l", color: "Red", size: "L", price: 12000, available: true },
+          { id: "variant_black_dress_m", color: "Black", size: "M", price: 11500, available: true }
+        ]
+      },
+      {
+        id: "product_black_bag",
+        name: "Black Bag",
+        imageUrl: makeProductSvg("Black Bag", ["#41454e", "#0f1115"]),
+        variants: [
+          { id: "variant_black_bag_default", color: "Black", size: "Default", price: 8000, available: true },
+          { id: "variant_blue_bag_default", color: "Blue", size: "Default", price: 7500, available: true }
+        ]
+      },
+      {
+        id: "product_women_watch",
+        name: "Women Watch",
+        imageUrl: makeProductSvg("Women Watch", ["#d7b15c", "#6f7787"]),
+        variants: [
+          { id: "variant_gold_watch_default", color: "Gold", size: "Default", price: 9500, available: true },
+          { id: "variant_silver_watch_default", color: "Silver", size: "Default", price: 9500, available: false }
+        ]
+      }
+    ];
+
+    const state = {
+      searchTerm: "",
+      variantSelections: {},
+      selectedItems: new Map(),
+      shippingFee: "",
+      aiResult: {
+        productIds: [],
+        recommendedVariantIds: [],
+        searchKeyword: "",
+        message: ""
+      },
+      orderSequence: 1,
+      orderCreatedId: ""
+    };
+
+    const els = {
+      searchInput: document.getElementById("searchInput"),
+      searchHint: document.getElementById("searchHint"),
+      aiInput: document.getElementById("aiInput"),
+      aiHint: document.getElementById("aiHint"),
+      parseButton: document.getElementById("parseButton"),
+      productList: document.getElementById("productList"),
+      selectedList: document.getElementById("selectedList"),
+      shippingInput: document.getElementById("shippingInput"),
+      shippingHint: document.getElementById("shippingHint"),
+      itemsTotalValue: document.getElementById("itemsTotalValue"),
+      shippingTotalValue: document.getElementById("shippingTotalValue"),
+      orderTotalValue: document.getElementById("orderTotalValue"),
+      copyButton: document.getElementById("copyButton"),
+      createButton: document.getElementById("createButton"),
+      actionsHint: document.getElementById("actionsHint"),
+      statusValue: document.getElementById("statusValue"),
+      toast: document.getElementById("toast"),
+      modalBackdrop: document.getElementById("modalBackdrop"),
+      cancelCreateButton: document.getElementById("cancelCreateButton"),
+      confirmCreateButton: document.getElementById("confirmCreateButton")
+    };
+
+    const formatCurrency = (value) => `${value.toLocaleString("en-US")} FCFA`;
+
+    const getProductSummary = (product) => {
+      const prices = product.variants.map((variant) => variant.price);
+      const colors = [...new Set(product.variants.map((variant) => variant.color))];
+      const sizes = [...new Set(product.variants.map((variant) => variant.size))];
+      const availableCount = product.variants.filter((variant) => variant.available).length;
+
+      return {
+        fromPrice: Math.min(...prices),
+        colors,
+        sizes,
+        availableCount,
+        totalCount: product.variants.length
+      };
+    };
+
+    const getItemsTotal = () => {
+      return [...state.selectedItems.values()].reduce((sum, item) => sum + item.variant.price * item.quantity, 0);
+    };
+
+    const parseShippingFee = () => {
+      const raw = state.shippingFee;
+      if (raw === "") return null;
+      const number = Number(raw);
+      return Number.isFinite(number) && number >= 0 ? number : null;
+    };
+
+    const getOrderTotal = () => {
+      const shipping = parseShippingFee();
+      if (shipping === null) return null;
+      return getItemsTotal() + shipping;
+    };
+
+    const getPanelStatus = () => {
+      const hasItems = state.selectedItems.size > 0;
+      const shipping = parseShippingFee();
+      const canCopy = hasItems && shipping !== null;
+
+      if (state.orderCreatedId) return "Order Created";
+      if (!hasItems) return "No Items";
+      if (!canCopy) return "Selecting Items";
+      if (canCopy) return "Ready to Create";
+      return "Ready to Copy";
+    };
+
+    const getVisibleProducts = () => {
+      const term = state.searchTerm.trim().toLowerCase();
+      if (!term) return products;
+      return products.filter((product) => product.name.toLowerCase().includes(term));
+    };
+
+    const showToast = (message) => {
+      els.toast.textContent = message;
+      els.toast.classList.add("show");
+      clearTimeout(showToast.timeoutId);
+      showToast.timeoutId = setTimeout(() => {
+        els.toast.classList.remove("show");
+      }, 2500);
+    };
+
+    const copyText = async (text) => {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        return;
+      }
+
+      const temp = document.createElement("textarea");
+      temp.value = text;
+      temp.setAttribute("readonly", "");
+      temp.style.position = "absolute";
+      temp.style.left = "-9999px";
+      document.body.appendChild(temp);
+      temp.select();
+      document.execCommand("copy");
+      document.body.removeChild(temp);
+    };
+
+    const buildPriceMessage = () => {
+      const lines = ["Hello, here is your order summary:"];
+      let index = 1;
+      for (const item of state.selectedItems.values()) {
+        lines.push(
+          `${index}. ${item.product.name} - ${item.variant.color} / ${item.variant.size} x ${item.quantity}: ${formatCurrency(item.variant.price * item.quantity)}`
+        );
+        index += 1;
+      }
+      lines.push(`Items total: ${formatCurrency(getItemsTotal())}`);
+      lines.push(`Delivery fee: ${formatCurrency(parseShippingFee() ?? 0)}`);
+      lines.push(`Total: ${formatCurrency(getOrderTotal() ?? 0)}`);
+      lines.push("Please confirm if everything is correct.");
+      return lines.join("\n");
+    };
+
+    const getProductSelectedInOrder = (product) => {
+      return product.variants.some((variant) => state.selectedItems.has(variant.id));
+    };
+
+    const getRecommendedVariantForProduct = (product) => {
+      return product.variants.find((variant) => state.aiResult.recommendedVariantIds.includes(variant.id)) || null;
+    };
+
+    const getAvailableSizesForColor = (product, color) => {
+      return [...new Set(
+        product.variants
+          .filter((variant) => variant.color === color)
+          .map((variant) => variant.size)
+      )];
+    };
+
+    const getVariantBySelection = (product, color, size) => {
+      return product.variants.find((variant) => variant.color === color && variant.size === size) || null;
+    };
+
+    const getFallbackVariant = (product) => {
+      return getRecommendedVariantForProduct(product)
+        || product.variants.find((variant) => variant.available)
+        || product.variants[0];
+    };
+
+    const getSelectionForProduct = (product) => {
+      const stored = state.variantSelections[product.id];
+      if (stored) {
+        const directMatch = getVariantBySelection(product, stored.color, stored.size);
+        if (directMatch) return stored;
+      }
+
+      const fallback = getFallbackVariant(product);
+      return fallback ? { color: fallback.color, size: fallback.size } : { color: "", size: "" };
+    };
+
+    const setSelectionForProduct = (product, nextSelection) => {
+      const colors = [...new Set(product.variants.map((variant) => variant.color))];
+      const safeColor = colors.includes(nextSelection.color) ? nextSelection.color : getFallbackVariant(product)?.color;
+      const sizes = getAvailableSizesForColor(product, safeColor);
+      const safeSize = sizes.includes(nextSelection.size) ? nextSelection.size : sizes[0];
+      state.variantSelections[product.id] = { color: safeColor, size: safeSize };
+    };
+
+    const applyAiSelections = () => {
+      state.aiResult.productIds.forEach((productId) => {
+        const product = products.find((entry) => entry.id === productId);
+        if (!product) return;
+        const recommended = getRecommendedVariantForProduct(product);
+        if (recommended) {
+          state.variantSelections[productId] = { color: recommended.color, size: recommended.size };
+        }
+      });
+    };
+
+    const addVariant = (product, variant) => {
+      const existing = state.selectedItems.get(variant.id);
+      if (existing) {
+        existing.quantity += 1;
+      } else {
+        state.selectedItems.set(variant.id, { product, variant, quantity: 1 });
+      }
+      state.orderCreatedId = "";
+      render();
+      showToast(`${product.name} / ${variant.color} / ${variant.size} selected.`);
+    };
+
+    const updateQuantity = (variantId, delta) => {
+      const item = state.selectedItems.get(variantId);
+      if (!item) return;
+      item.quantity = Math.max(1, item.quantity + delta);
+      state.orderCreatedId = "";
+      render();
+    };
+
+    const removeItem = (variantId) => {
+      state.selectedItems.delete(variantId);
+      state.orderCreatedId = "";
+      render();
+    };
+
+    const analyzeAiMessage = (message) => {
+      const normalized = message.trim().toLowerCase();
+      if (!normalized) {
+        return {
+          productIds: [],
+          recommendedVariantIds: [],
+          searchKeyword: "",
+          message: "Paste a customer message to suggest products."
+        };
+      }
+
+      const tokenMap = [
+        { productId: "product_red_dress", keyword: "dress", aliases: ["dress", "red dress", "gown"] },
+        { productId: "product_black_bag", keyword: "bag", aliases: ["bag", "black bag", "handbag"] },
+        { productId: "product_women_watch", keyword: "watch", aliases: ["watch", "women watch", "clock"] }
+      ];
+
+      const colors = ["red", "black", "blue", "gold", "silver"];
+      const sizes = ["s", "m", "l", "xl", "default"];
+      const matchedProducts = [];
+      let keyword = "";
+
+      tokenMap.forEach((entry) => {
+        if (entry.aliases.some((alias) => normalized.includes(alias))) {
+          matchedProducts.push(entry.productId);
+          if (!keyword) keyword = entry.keyword;
+        }
+      });
+
+      const matchedColor = colors.find((color) => normalized.includes(color));
+      const matchedSize = sizes.find((size) => {
+        if (size === "default") return normalized.includes("default");
+        return new RegExp(`(^|\\W)${size}(\\W|$)`, "i").test(normalized) || normalized.includes(`size ${size}`);
+      });
+
+      const recommendedVariantIds = [];
+      matchedProducts.forEach((productId) => {
+        const product = products.find((item) => item.id === productId);
+        if (!product) return;
+
+        const matches = product.variants.filter((variant) => {
+          const colorMatch = matchedColor ? variant.color.toLowerCase() === matchedColor : true;
+          const sizeMatch = matchedSize ? variant.size.toLowerCase() === matchedSize : true;
+          return colorMatch && sizeMatch;
+        });
+
+        const variantsToUse = matches.length > 0 ? matches : product.variants.filter((variant) => {
+          const colorMatch = matchedColor ? variant.color.toLowerCase() === matchedColor : false;
+          const sizeMatch = matchedSize ? variant.size.toLowerCase() === matchedSize : false;
+          return colorMatch || sizeMatch;
+        });
+
+        variantsToUse.forEach((variant) => recommendedVariantIds.push(variant.id));
+      });
+
+      if (matchedProducts.length === 0) {
+        return {
+          productIds: [],
+          recommendedVariantIds: [],
+          searchKeyword: "",
+          message: "No confident product match. Please search manually."
+        };
+      }
+
+      return {
+        productIds: matchedProducts,
+        recommendedVariantIds,
+        searchKeyword: keyword,
+        message: recommendedVariantIds.length > 0
+          ? "Suggested product and variant hints are highlighted below."
+          : "Suggested product match found. Review the color and size options below."
+      };
+    };
+
+    const renderProducts = () => {
+      const visibleProducts = getVisibleProducts();
+      if (visibleProducts.length === 0) {
+        els.productList.innerHTML = `<div class="empty-state">No products found.</div>`;
+        return;
+      }
+
+      els.productList.innerHTML = visibleProducts.map((product) => {
+        const isAiHit = state.aiResult.productIds.includes(product.id);
+        const selection = getSelectionForProduct(product);
+        setSelectionForProduct(product, selection);
+        const resolvedSelection = getSelectionForProduct(product);
+        const currentVariant = getVariantBySelection(product, resolvedSelection.color, resolvedSelection.size);
+        const colors = [...new Set(product.variants.map((variant) => variant.color))];
+        const sizes = getAvailableSizesForColor(product, resolvedSelection.color);
+        return `
+          <article class="product-card ${isAiHit ? "ai-hit" : ""}">
+            <div class="product-top">
+              <img class="product-image" src="${product.imageUrl}" alt="${product.name}">
+              <div class="product-main">
+                <div class="product-head">
+                  <h3 class="product-name">${product.name}</h3>
+                  ${isAiHit ? `<span class="variant-note">AI suggested</span>` : ""}
+                </div>
+                <div class="product-subline">
+                  <span>${currentVariant ? formatCurrency(currentVariant.price) : "-"}</span>
+                  <span class="availability ${currentVariant?.available ? "available" : "unavailable"}">${currentVariant?.available ? "Available" : "Unavailable"}</span>
+                </div>
+                <div class="variant-panel">
+                  <div class="product-inline-controls">
+                    <div class="option-group">
+                      <div class="option-label">Color</div>
+                      <div class="option-row">
+                        ${colors.map((color) => {
+                          const colorVariants = product.variants.filter((variant) => variant.color === color);
+                          const recommended = colorVariants.some((variant) => state.aiResult.recommendedVariantIds.includes(variant.id));
+                          const selected = resolvedSelection.color === color;
+                          return `
+                            <button
+                              class="option-chip ${selected ? "selected" : ""} ${recommended ? "recommended" : ""}"
+                              type="button"
+                              data-action="select-color"
+                              data-product-id="${product.id}"
+                              data-color="${color}"
+                            >${color}</button>
+                          `;
+                        }).join("")}
+                      </div>
+                    </div>
+                    <div class="option-group">
+                      <div class="option-label">Size</div>
+                      <div class="option-row">
+                        ${sizes.map((size) => {
+                          const variant = getVariantBySelection(product, resolvedSelection.color, size);
+                          const recommended = variant ? state.aiResult.recommendedVariantIds.includes(variant.id) : false;
+                          const selected = resolvedSelection.size === size;
+                          const unavailable = variant ? !variant.available : true;
+                          return `
+                            <button
+                              class="option-chip ${selected ? "selected" : ""} ${recommended ? "recommended" : ""}"
+                              type="button"
+                              ${unavailable ? "disabled" : ""}
+                              data-action="select-size"
+                              data-product-id="${product.id}"
+                              data-size="${size}"
+                            >${size}</button>
+                          `;
+                        }).join("")}
+                      </div>
+                    </div>
+                    <button
+                      class="btn btn-secondary add-button"
+                      type="button"
+                      aria-label="Add selected variant"
+                      ${currentVariant?.available ? "" : "disabled"}
+                      data-action="add-current-variant"
+                      data-product-id="${product.id}"
+                      data-variant-id="${currentVariant?.id || ""}"
+                    >+</button>
+                  </div>
+                  <div class="product-statuses">
+                    ${currentVariant && state.aiResult.recommendedVariantIds.includes(currentVariant.id)
+                      ? `<span class="variant-note">AI recommended</span>`
+                      : ""}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </article>
+        `;
+      }).join("");
+    };
+
+    const renderSelectedItems = () => {
+      if (state.selectedItems.size === 0) {
+        els.selectedList.innerHTML = `<div class="empty-state">No items selected.</div>`;
+        return;
+      }
+
+      els.selectedList.innerHTML = [...state.selectedItems.values()].map((item) => `
+        <div class="selected-item">
+          <div class="selected-top">
+            <div>
+              <h3 class="selected-title">${item.product.name}</h3>
+              <p class="selected-variant">${item.variant.color} / ${item.variant.size}</p>
+            </div>
+            <button class="btn btn-ghost" type="button" data-action="remove-item" data-variant-id="${item.variant.id}">Remove</button>
+          </div>
+          <p class="selected-price">${formatCurrency(item.variant.price)} x ${item.quantity} = ${formatCurrency(item.variant.price * item.quantity)}</p>
+          <div class="selected-actions">
+            <div class="stepper">
+              <button type="button" aria-label="Decrease quantity" data-action="decrement-item" data-variant-id="${item.variant.id}">-</button>
+              <span class="stepper-value">${item.quantity}</span>
+              <button type="button" aria-label="Increase quantity" data-action="increment-item" data-variant-id="${item.variant.id}">+</button>
+            </div>
+          </div>
+        </div>
+      `).join("");
+    };
+
+    const renderSummary = () => {
+      const itemsTotal = getItemsTotal();
+      const shippingFee = parseShippingFee();
+      const orderTotal = getOrderTotal();
+      const canProceed = state.selectedItems.size > 0 && shippingFee !== null;
+
+      els.itemsTotalValue.textContent = formatCurrency(itemsTotal);
+      els.shippingTotalValue.textContent = shippingFee === null ? "Not entered" : formatCurrency(shippingFee);
+      els.orderTotalValue.textContent = orderTotal === null ? "Waiting for shipping fee" : formatCurrency(orderTotal);
+      els.shippingHint.textContent = shippingFee === null ? "Shipping fee not entered." : "Shipping fee included in order total.";
+      els.shippingHint.className = `hint ${shippingFee === null ? "" : "success"}`;
+
+      els.copyButton.disabled = !canProceed;
+      els.createButton.disabled = !canProceed;
+      els.statusValue.textContent = getPanelStatus();
+
+      if (state.orderCreatedId) {
+        els.actionsHint.textContent = `Order created: ${state.orderCreatedId}`;
+      } else if (!state.selectedItems.size) {
+        els.actionsHint.textContent = "Select at least one item to prepare a customer-ready price message.";
+      } else if (shippingFee === null) {
+        els.actionsHint.textContent = "Add shipping fee to enable copying the price message and creating the order.";
+      } else {
+        els.actionsHint.textContent = "Ready to copy the price message or create the order.";
+      }
+    };
+
+    const renderHints = () => {
+      const visibleProducts = getVisibleProducts().length;
+      els.searchHint.textContent = state.searchTerm.trim()
+        ? `${visibleProducts} product${visibleProducts === 1 ? "" : "s"} match the current search.`
+        : "Type to filter products by name.";
+
+      const aiHasWarning = state.aiResult.message.includes("No confident product match");
+      const aiHasSuccess = state.aiResult.message && !aiHasWarning && state.aiResult.message !== "Paste a customer message to suggest products.";
+      els.aiHint.textContent = state.aiResult.message || "AI suggestions only assist selection. They do not add items automatically.";
+      els.aiHint.className = `hint ${aiHasWarning ? "warning" : aiHasSuccess ? "success" : ""}`;
+    };
+
+    const render = () => {
+      renderProducts();
+      renderSelectedItems();
+      renderSummary();
+      renderHints();
+    };
+
+    els.searchInput.addEventListener("input", (event) => {
+      state.searchTerm = event.target.value;
+      render();
+    });
+
+    els.parseButton.addEventListener("click", () => {
+      state.aiResult = analyzeAiMessage(els.aiInput.value);
+      if (state.aiResult.searchKeyword) {
+        state.searchTerm = state.aiResult.searchKeyword;
+        els.searchInput.value = state.aiResult.searchKeyword;
+      }
+      applyAiSelections();
+      state.orderCreatedId = "";
+      render();
+    });
+
+    els.productList.addEventListener("click", (event) => {
+      const button = event.target.closest("button");
+      if (!button) return;
+      const action = button.dataset.action;
+      const productId = button.dataset.productId;
+      const variantId = button.dataset.variantId;
+      const product = products.find((entry) => entry.id === productId);
+
+      if (action === "select-color" && product) {
+        setSelectionForProduct(product, {
+          ...getSelectionForProduct(product),
+          color: button.dataset.color
+        });
+        render();
+      }
+
+      if (action === "select-size" && product) {
+        setSelectionForProduct(product, {
+          ...getSelectionForProduct(product),
+          size: button.dataset.size
+        });
+        render();
+      }
+
+      if (action === "add-current-variant") {
+        const product = products.find((entry) => entry.id === productId);
+        const variant = product?.variants.find((entry) => entry.id === variantId);
+        if (product && variant && variant.available) {
+          addVariant(product, variant);
+        }
+      }
+    });
+
+    els.selectedList.addEventListener("click", (event) => {
+      const button = event.target.closest("button");
+      if (!button) return;
+      const variantId = button.dataset.variantId;
+      const action = button.dataset.action;
+
+      if (action === "increment-item") updateQuantity(variantId, 1);
+      if (action === "decrement-item") updateQuantity(variantId, -1);
+      if (action === "remove-item") removeItem(variantId);
+    });
+
+    els.shippingInput.addEventListener("input", (event) => {
+      const value = event.target.value;
+      state.shippingFee = value === "" ? "" : String(Math.max(0, Number(value)));
+      state.orderCreatedId = "";
+      render();
+    });
+
+    els.copyButton.addEventListener("click", async () => {
+      if (els.copyButton.disabled) return;
+      try {
+        await copyText(buildPriceMessage());
+        showToast("Price message copied.");
+      } catch (error) {
+        showToast("Copy failed. Please try again.");
+      }
+    });
+
+    els.createButton.addEventListener("click", () => {
+      if (els.createButton.disabled) return;
+      els.modalBackdrop.classList.add("open");
+    });
+
+    els.cancelCreateButton.addEventListener("click", () => {
+      els.modalBackdrop.classList.remove("open");
+    });
+
+    els.modalBackdrop.addEventListener("click", (event) => {
+      if (event.target === els.modalBackdrop) {
+        els.modalBackdrop.classList.remove("open");
+      }
+    });
+
+    els.confirmCreateButton.addEventListener("click", () => {
+      const sequence = String(state.orderSequence).padStart(4, "0");
+      state.orderCreatedId = `ORD-2026-${sequence}`;
+      state.orderSequence += 1;
+      els.modalBackdrop.classList.remove("open");
+      render();
+      showToast(`Order created: ${state.orderCreatedId}`);
+    });
+
+    render();
+  </script>
+</body>
+</html>
