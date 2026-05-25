@@ -699,11 +699,11 @@
       backdrop-filter: blur(5px);
     }
 
-    .page#stepOnePage .stage {
+    .page#stepTwoPage .stage {
       padding-bottom: 84px;
     }
 
-    .page#stepOnePage .search-results-list {
+    .page#stepTwoPage .search-results-list {
       padding-bottom: 18px;
     }
 
@@ -882,7 +882,7 @@
         width: 100%;
       }
 
-      .page#stepOnePage .stage {
+      .page#stepTwoPage .stage {
         padding-bottom: 96px;
       }
 
@@ -901,19 +901,26 @@
     <main class="pages">
       <section class="page" id="stepOnePage">
         <div class="stage">
+          <section class="panel left-panel tool-shell">
+            <label for="aiInput">AI Parse</label>
+            <textarea id="aiInput" placeholder="Paste customer message to parse address and product info..."></textarea>
+            <div class="input-row">
+              <button class="btn btn-secondary" id="parseAddressOnlyButton" type="button">Parse (Address Only)</button>
+              <button class="btn btn-primary" id="parseAddressAndProductsButton" type="button">Parse (Address + Products)</button>
+            </div>
+            <p class="hint" id="aiHint">Use the buttons above to simulate the two parse outcomes.</p>
+          </section>
+        </div>
+      </section>
+
+      <section class="page hidden" id="stepTwoPage">
+        <div class="page-topbar">
+          <div class="section-title">Manual Product Search</div>
+          <button class="btn btn-secondary" id="backToParseButton" type="button">Back</button>
+        </div>
+        <div class="stage">
           <section class="panel left-panel">
             <div class="left-stack">
-              <div class="tool-shell">
-                <label for="aiInput">AI Parse</label>
-                <textarea id="aiInput" placeholder="Paste customer message to suggest products..."></textarea>
-                <div class="input-row">
-                  <button class="btn btn-primary" id="parseButton" type="button">Parse</button>
-                </div>
-                <p class="hint" id="aiHint">AI suggestions only assist selection. They do not add items automatically.</p>
-              </div>
-
-              <div class="or-divider">Or</div>
-
               <div class="tool-shell product-module">
                 <div>
                   <div class="search-input-wrap">
@@ -936,17 +943,16 @@
                     <div class="product-list" id="productList"></div>
                   </div>
                 </div>
-
               </div>
             </div>
           </section>
         </div>
       </section>
 
-      <section class="page hidden" id="stepTwoPage">
+      <section class="page hidden" id="stepThreePage">
         <div class="page-topbar">
           <div></div>
-          <button class="btn btn-secondary" id="backToProductsButton" type="button">Back</button>
+          <button class="btn btn-secondary" id="backFromCreateButton" type="button">Back</button>
         </div>
 
         <aside class="right-panel">
@@ -1086,6 +1092,7 @@
         searchKeyword: "",
         message: ""
       },
+      parseMode: "",
       orderSequence: 1,
       orderCreatedId: ""
     };
@@ -1093,20 +1100,24 @@
     const els = {
       stepOnePage: document.getElementById("stepOnePage"),
       stepTwoPage: document.getElementById("stepTwoPage"),
+      stepThreePage: document.getElementById("stepThreePage"),
       searchInput: document.getElementById("searchInput"),
       searchClearButton: document.getElementById("searchClearButton"),
       categoryChips: document.getElementById("categoryChips"),
       searchHint: document.getElementById("searchHint"),
       aiInput: document.getElementById("aiInput"),
       aiHint: document.getElementById("aiHint"),
-      parseButton: document.getElementById("parseButton"),
+      parseAddressOnlyButton: document.getElementById("parseAddressOnlyButton"),
+      parseAddressAndProductsButton: document.getElementById("parseAddressAndProductsButton"),
       dockConfirmButton: document.getElementById("dockConfirmButton"),
-      backToProductsButton: document.getElementById("backToProductsButton"),
+      backToParseButton: document.getElementById("backToParseButton"),
+      backFromCreateButton: document.getElementById("backFromCreateButton"),
       productList: document.getElementById("productList"),
       selectedDock: document.getElementById("selectedDock"),
       selectedDockItems: document.getElementById("selectedDockItems"),
       selectedList: document.getElementById("selectedList"),
       shippingInput: document.getElementById("shippingInput"),
+      phoneInput: document.getElementById("phoneInput"),
       shippingHint: document.getElementById("shippingHint"),
       itemsTotalValue: document.getElementById("itemsTotalValue"),
       shippingTotalValue: document.getElementById("shippingTotalValue"),
@@ -1197,6 +1208,7 @@
       const step = state.currentStep;
       els.stepOnePage.classList.toggle("hidden", step !== 1);
       els.stepTwoPage.classList.toggle("hidden", step !== 2);
+      els.stepThreePage.classList.toggle("hidden", step !== 3);
     };
 
     const goToStep = (step) => {
@@ -1259,6 +1271,29 @@
           state.variantSelections[productId] = { color: recommended.color, size: recommended.size };
         }
       });
+    };
+
+    const resetOrderSelection = () => {
+      state.selectedItems = new Map();
+      state.variantSelections = {};
+      state.orderCreatedId = "";
+    };
+
+    const resetFlowDataForParse = () => {
+      resetOrderSelection();
+      state.searchTerm = "";
+      state.selectedCategory = "";
+      state.shippingFee = "";
+      state.parseMode = "";
+      state.aiResult = {
+        productIds: [],
+        recommendedVariantIds: [],
+        searchKeyword: "",
+        message: ""
+      };
+      els.searchInput.value = "";
+      els.shippingInput.value = "";
+      if (els.phoneInput) els.phoneInput.value = "";
     };
 
     const addVariant = (product, variant) => {
@@ -1490,7 +1525,7 @@
     };
 
     const renderSelectedDock = () => {
-      els.selectedDock.style.display = state.currentStep === 1 ? "flex" : "none";
+      els.selectedDock.style.display = state.currentStep === 2 ? "flex" : "none";
       els.dockConfirmButton.disabled = state.selectedItems.size === 0;
 
       if (state.selectedItems.size === 0) {
@@ -1583,20 +1618,41 @@
       render();
     });
 
-    els.parseButton.addEventListener("click", () => {
+    els.parseAddressOnlyButton.addEventListener("click", () => {
+      resetFlowDataForParse();
       state.aiResult = analyzeAiMessage(els.aiInput.value);
-      if (state.aiResult.searchKeyword) {
-        state.searchTerm = state.aiResult.searchKeyword;
-        els.searchInput.value = state.aiResult.searchKeyword;
-      }
-      applyAiSelections();
-      state.orderCreatedId = "";
+      state.parseMode = "address_only";
+      state.searchTerm = state.aiResult.searchKeyword || "";
+      els.searchInput.value = state.searchTerm;
+      state.aiResult.message = "Address parsed. Please search and add products manually.";
       goToStepAndRender(2);
+    });
+
+    els.parseAddressAndProductsButton.addEventListener("click", () => {
+      resetFlowDataForParse();
+      state.aiResult = analyzeAiMessage(els.aiInput.value);
+      state.parseMode = "address_and_products";
+      applyAiSelections();
+
+      const candidateVariantIds = state.aiResult.recommendedVariantIds.length
+        ? state.aiResult.recommendedVariantIds
+        : products.flatMap((product) => product.variants.slice(0, 1).map((variant) => variant.id));
+
+      candidateVariantIds.slice(0, 2).forEach((variantId) => {
+        const product = products.find((entry) => entry.variants.some((variant) => variant.id === variantId));
+        const variant = product?.variants.find((entry) => entry.id === variantId);
+        if (product && variant && variant.available) {
+          state.selectedItems.set(variant.id, { product, variant, quantity: 1 });
+        }
+      });
+
+      state.aiResult.message = "Address + products parsed. Moved directly to create order.";
+      goToStepAndRender(3);
     });
 
     els.dockConfirmButton.addEventListener("click", () => {
       state.orderCreatedId = "";
-      goToStepAndRender(2);
+      goToStepAndRender(3);
     });
 
     els.productList.addEventListener("click", (event) => {
@@ -1673,7 +1729,15 @@
       els.modalBackdrop.classList.add("open");
     });
 
-    els.backToProductsButton.addEventListener("click", () => {
+    els.backToParseButton.addEventListener("click", () => {
+      goToStepAndRender(1);
+    });
+
+    els.backFromCreateButton.addEventListener("click", () => {
+      if (state.parseMode === "address_only") {
+        goToStepAndRender(2);
+        return;
+      }
       goToStepAndRender(1);
     });
 
