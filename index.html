@@ -319,6 +319,8 @@
       border-radius: 14px;
       padding: 16px;
       overflow: hidden;
+      display: grid;
+      gap: 10px;
       transition: transform 220ms ease, border-color 220ms ease;
     }
 
@@ -446,7 +448,7 @@
       align-items: center;
       gap: 12px;
       flex-wrap: wrap;
-      justify-content: space-between;
+      justify-content: flex-start;
       min-width: 0;
     }
 
@@ -987,19 +989,48 @@
               </div>
             </div>
           </section>
+          <section class="summary-card">
+            <div class="summary-heading">Price Message</div>
+            <textarea id="priceMessagePreview" readonly placeholder="Fill shipping fee to generate message..."></textarea>
+            <div class="action-stack">
+              <button class="btn btn-secondary" id="copyButton" type="button">Copy Price Message</button>
+            </div>
+          </section>
+          <section class="summary-card">
+            <div class="action-stack">
+              <button class="btn btn-primary" id="continueToCheckoutButton" type="button">Continue</button>
+            </div>
+            <p class="subtext" id="stepThreeHint">Add shipping fee to continue.</p>
+          </section>
+        </aside>
+      </section>
 
+      <section class="page hidden" id="stepFourPage">
+        <div class="page-topbar">
+          <div></div>
+          <button class="btn btn-secondary" id="backToSummaryButton" type="button">Back</button>
+        </div>
+
+        <aside class="right-panel">
           <section class="summary-card">
             <div class="summary-heading">Phone Number</div>
             <input id="phoneInput" type="tel" placeholder="Enter customer phone number" inputmode="tel" autocomplete="off">
           </section>
 
           <section class="summary-card">
+            <div class="summary-heading">Payment Method</div>
+            <div class="category-chips" id="paymentMethodChips">
+              <button class="category-chip active" type="button" data-payment="cash_on_delivery">货到付款</button>
+              <button class="category-chip" type="button" data-payment="paid">已经付款</button>
+            </div>
+          </section>
+
+          <section class="summary-card">
             <div class="summary-heading">Actions</div>
             <div class="action-stack">
-              <button class="btn btn-secondary" id="copyButton" type="button">Copy Price Message</button>
               <button class="btn btn-primary" id="createButton" type="button">Create Order</button>
             </div>
-            <p class="subtext" id="actionsHint">Copying the message does not mean it was sent. Creating the order does not mean payment is completed.</p>
+            <p class="subtext" id="actionsHint">Creating the order does not mean payment is completed.</p>
           </section>
         </aside>
       </section>
@@ -1016,10 +1047,14 @@
   <div class="modal-backdrop" id="modalBackdrop" role="presentation">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
       <h2 id="modalTitle">Create order?</h2>
-      <p>This will create an order with the selected items and shipping fee. Please make sure the customer has confirmed the order details.</p>
-      <div class="modal-actions">
+      <p id="modalDescription">This will create an order with the selected items and shipping fee. Please make sure the customer has confirmed the order details.</p>
+      <div class="summary-card" id="modalOrderDetails"></div>
+      <div class="modal-actions" id="modalConfirmActions">
         <button class="btn btn-secondary" id="cancelCreateButton" type="button">Cancel</button>
         <button class="btn btn-primary" id="confirmCreateButton" type="button">Confirm Create</button>
+      </div>
+      <div class="modal-actions" id="modalSuccessActions" style="display:none;">
+        <button class="btn btn-primary" id="returnToParseButton" type="button">Return to Parse</button>
       </div>
     </div>
   </div>
@@ -1092,6 +1127,7 @@
         searchKeyword: "",
         message: ""
       },
+      paymentMethod: "cash_on_delivery",
       parseMode: "",
       orderSequence: 1,
       orderCreatedId: ""
@@ -1101,9 +1137,11 @@
       stepOnePage: document.getElementById("stepOnePage"),
       stepTwoPage: document.getElementById("stepTwoPage"),
       stepThreePage: document.getElementById("stepThreePage"),
+      stepFourPage: document.getElementById("stepFourPage"),
       searchInput: document.getElementById("searchInput"),
       searchClearButton: document.getElementById("searchClearButton"),
       categoryChips: document.getElementById("categoryChips"),
+      paymentMethodChips: document.getElementById("paymentMethodChips"),
       searchHint: document.getElementById("searchHint"),
       aiInput: document.getElementById("aiInput"),
       aiHint: document.getElementById("aiHint"),
@@ -1112,6 +1150,9 @@
       dockConfirmButton: document.getElementById("dockConfirmButton"),
       backToParseButton: document.getElementById("backToParseButton"),
       backFromCreateButton: document.getElementById("backFromCreateButton"),
+      backToSummaryButton: document.getElementById("backToSummaryButton"),
+      continueToCheckoutButton: document.getElementById("continueToCheckoutButton"),
+      stepThreeHint: document.getElementById("stepThreeHint"),
       productList: document.getElementById("productList"),
       selectedDock: document.getElementById("selectedDock"),
       selectedDockItems: document.getElementById("selectedDockItems"),
@@ -1119,6 +1160,7 @@
       shippingInput: document.getElementById("shippingInput"),
       phoneInput: document.getElementById("phoneInput"),
       shippingHint: document.getElementById("shippingHint"),
+      priceMessagePreview: document.getElementById("priceMessagePreview"),
       itemsTotalValue: document.getElementById("itemsTotalValue"),
       shippingTotalValue: document.getElementById("shippingTotalValue"),
       orderTotalValue: document.getElementById("orderTotalValue"),
@@ -1127,8 +1169,14 @@
       actionsHint: document.getElementById("actionsHint"),
       toast: document.getElementById("toast"),
       modalBackdrop: document.getElementById("modalBackdrop"),
+      modalTitle: document.getElementById("modalTitle"),
+      modalDescription: document.getElementById("modalDescription"),
+      modalOrderDetails: document.getElementById("modalOrderDetails"),
+      modalConfirmActions: document.getElementById("modalConfirmActions"),
+      modalSuccessActions: document.getElementById("modalSuccessActions"),
       cancelCreateButton: document.getElementById("cancelCreateButton"),
-      confirmCreateButton: document.getElementById("confirmCreateButton")
+      confirmCreateButton: document.getElementById("confirmCreateButton"),
+      returnToParseButton: document.getElementById("returnToParseButton")
     };
 
     const formatCurrency = (value) => `${value.toLocaleString("en-US")} FCFA`;
@@ -1204,11 +1252,51 @@
       return `The total is ${formatCurrency(getItemsTotal())} + ${formatCurrency(parseShippingFee() ?? 0)} delivery fee.`;
     };
 
+    const buildModalOrderDetails = () => {
+      const shipping = parseShippingFee() ?? 0;
+      const orderTotal = getItemsTotal() + shipping;
+      const phone = els.phoneInput?.value.trim() || "-";
+      const paymentLabel = state.paymentMethod === "paid" ? "已经付款" : "货到付款";
+      const items = [...state.selectedItems.values()].map((item) =>
+        `${item.product.name} (${item.variant.color}/${item.variant.size}) ×${item.quantity}`
+      );
+
+      return `
+        <div class="summary-grid">
+          <div class="summary-row"><span>Items</span><span>${items.length}</span></div>
+          <div class="summary-row"><span>Items Total</span><span>${formatCurrency(getItemsTotal())}</span></div>
+          <div class="summary-row"><span>Shipping Fee</span><span>${formatCurrency(shipping)}</span></div>
+          <div class="summary-row"><span>Order Total</span><strong>${formatCurrency(orderTotal)}</strong></div>
+          <div class="summary-row"><span>Phone</span><span>${phone}</span></div>
+          <div class="summary-row"><span>Payment</span><span>${paymentLabel}</span></div>
+        </div>
+        <p class="subtext">${items.join(" | ")}</p>
+      `;
+    };
+
+    const openConfirmModal = () => {
+      els.modalTitle.textContent = "Create order?";
+      els.modalDescription.textContent = "Please confirm the order details below before creating the order.";
+      els.modalOrderDetails.innerHTML = buildModalOrderDetails();
+      els.modalConfirmActions.style.display = "flex";
+      els.modalSuccessActions.style.display = "none";
+      els.modalBackdrop.classList.add("open");
+    };
+
+    const showModalSuccessState = () => {
+      els.modalTitle.textContent = "Order created successfully";
+      els.modalDescription.textContent = `Order ID: ${state.orderCreatedId}`;
+      els.modalOrderDetails.innerHTML = `<p class="subtext">The order has been created and saved.</p>`;
+      els.modalConfirmActions.style.display = "none";
+      els.modalSuccessActions.style.display = "flex";
+    };
+
     const updateStepView = () => {
       const step = state.currentStep;
       els.stepOnePage.classList.toggle("hidden", step !== 1);
       els.stepTwoPage.classList.toggle("hidden", step !== 2);
       els.stepThreePage.classList.toggle("hidden", step !== 3);
+      els.stepFourPage.classList.toggle("hidden", step !== 4);
     };
 
     const goToStep = (step) => {
@@ -1285,6 +1373,7 @@
       state.selectedCategory = "";
       state.shippingFee = "";
       state.parseMode = "";
+      state.paymentMethod = "cash_on_delivery";
       state.aiResult = {
         productIds: [],
         recommendedVariantIds: [],
@@ -1437,55 +1526,55 @@
                   <span>${currentVariant ? formatCurrency(currentVariant.price) : "-"}</span>
                   <span class="availability ${currentVariant?.available ? "available" : "unavailable"}">${currentVariant?.available ? "Available" : "Unavailable"}</span>
                 </div>
-                <div class="variant-panel">
-                  <div class="product-inline-controls">
-                    <div class="option-group">
-                      <div class="option-label">Color</div>
-                      <div class="option-row">
-                        ${colors.map((color) => {
-                          const colorVariants = product.variants.filter((variant) => variant.color === color);
-                          const recommended = colorVariants.some((variant) => state.aiResult.recommendedVariantIds.includes(variant.id));
-                          const selected = resolvedSelection.color === color;
-                          return `
-                            <button
-                              class="option-chip ${selected ? "selected" : ""} ${recommended ? "recommended" : ""}"
-                              type="button"
-                              data-action="select-color"
-                              data-product-id="${product.id}"
-                              data-color="${color}"
-                            >${color}</button>
-                          `;
-                        }).join("")}
-                      </div>
-                    </div>
-                    <div class="option-group">
-                      <div class="option-label">Size</div>
-                      <div class="option-row">
-                        ${sizes.map((size) => {
-                          const variant = getVariantBySelection(product, resolvedSelection.color, size);
-                          const recommended = variant ? state.aiResult.recommendedVariantIds.includes(variant.id) : false;
-                          const selected = resolvedSelection.size === size;
-                          const unavailable = variant ? !variant.available : true;
-                          return `
-                            <button
-                              class="option-chip ${selected ? "selected" : ""} ${recommended ? "recommended" : ""}"
-                              type="button"
-                              ${unavailable ? "disabled" : ""}
-                              data-action="select-size"
-                              data-product-id="${product.id}"
-                              data-size="${size}"
-                            >${size}</button>
-                          `;
-                        }).join("")}
-                      </div>
-                    </div>
-                  </div>
-                  <div class="product-statuses">
-                    ${currentVariant && state.aiResult.recommendedVariantIds.includes(currentVariant.id)
-                      ? `<span class="variant-note">AI recommended</span>`
-                      : ""}
+              </div>
+            </div>
+            <div class="variant-panel">
+              <div class="product-inline-controls">
+                <div class="option-group">
+                  <div class="option-label">Color</div>
+                  <div class="option-row">
+                    ${colors.map((color) => {
+                      const colorVariants = product.variants.filter((variant) => variant.color === color);
+                      const recommended = colorVariants.some((variant) => state.aiResult.recommendedVariantIds.includes(variant.id));
+                      const selected = resolvedSelection.color === color;
+                      return `
+                        <button
+                          class="option-chip ${selected ? "selected" : ""} ${recommended ? "recommended" : ""}"
+                          type="button"
+                          data-action="select-color"
+                          data-product-id="${product.id}"
+                          data-color="${color}"
+                        >${color}</button>
+                      `;
+                    }).join("")}
                   </div>
                 </div>
+                <div class="option-group">
+                  <div class="option-label">Size</div>
+                  <div class="option-row">
+                    ${sizes.map((size) => {
+                      const variant = getVariantBySelection(product, resolvedSelection.color, size);
+                      const recommended = variant ? state.aiResult.recommendedVariantIds.includes(variant.id) : false;
+                      const selected = resolvedSelection.size === size;
+                      const unavailable = variant ? !variant.available : true;
+                      return `
+                        <button
+                          class="option-chip ${selected ? "selected" : ""} ${recommended ? "recommended" : ""}"
+                          type="button"
+                          ${unavailable ? "disabled" : ""}
+                          data-action="select-size"
+                          data-product-id="${product.id}"
+                          data-size="${size}"
+                        >${size}</button>
+                      `;
+                    }).join("")}
+                  </div>
+                </div>
+              </div>
+              <div class="product-statuses">
+                ${currentVariant && state.aiResult.recommendedVariantIds.includes(currentVariant.id)
+                  ? `<span class="variant-note">AI recommended</span>`
+                  : ""}
               </div>
             </div>
           </article>
@@ -1554,8 +1643,23 @@
       els.shippingHint.textContent = shippingFee === null ? "Shipping fee not entered." : "Shipping fee included in order total.";
       els.shippingHint.className = `hint ${shippingFee === null ? "" : "success"}`;
 
-      els.copyButton.disabled = !canProceed;
-      els.createButton.disabled = !canProceed;
+      if (els.continueToCheckoutButton) {
+        els.continueToCheckoutButton.disabled = !canProceed;
+      }
+      if (els.stepThreeHint) {
+        els.stepThreeHint.textContent = canProceed
+          ? "Ready to continue to checkout."
+          : "Add shipping fee to continue.";
+      }
+
+      if (els.priceMessagePreview) {
+        els.priceMessagePreview.value = canProceed
+          ? buildPriceMessage()
+          : "";
+        els.priceMessagePreview.placeholder = canProceed
+          ? ""
+          : "Fill shipping fee to generate message...";
+      }
 
       if (state.orderCreatedId) {
         els.actionsHint.textContent = `Order created: ${state.orderCreatedId}`;
@@ -1583,6 +1687,18 @@
       [...els.categoryChips.querySelectorAll(".category-chip")].forEach((chip) => {
         chip.classList.toggle("active", chip.dataset.category === state.selectedCategory);
       });
+
+      if (els.paymentMethodChips) {
+        [...els.paymentMethodChips.querySelectorAll(".category-chip")].forEach((chip) => {
+          chip.classList.toggle("active", chip.dataset.payment === state.paymentMethod);
+        });
+      }
+
+      const shippingFee = parseShippingFee();
+      const phoneReady = Boolean(els.phoneInput?.value.trim());
+      const canCreate = state.selectedItems.size > 0 && shippingFee !== null && phoneReady && Boolean(state.paymentMethod);
+      els.copyButton.disabled = !(state.selectedItems.size > 0 && shippingFee !== null);
+      els.createButton.disabled = !canCreate;
     };
 
     const render = () => {
@@ -1615,6 +1731,13 @@
       const button = event.target.closest("button");
       if (!button) return;
       state.selectedCategory = button.dataset.category || "";
+      render();
+    });
+
+    els.paymentMethodChips.addEventListener("click", (event) => {
+      const button = event.target.closest("button");
+      if (!button) return;
+      state.paymentMethod = button.dataset.payment || "cash_on_delivery";
       render();
     });
 
@@ -1714,6 +1837,11 @@
       render();
     });
 
+    els.phoneInput.addEventListener("input", () => {
+      state.orderCreatedId = "";
+      render();
+    });
+
     els.copyButton.addEventListener("click", async () => {
       if (els.copyButton.disabled) return;
       try {
@@ -1726,7 +1854,7 @@
 
     els.createButton.addEventListener("click", () => {
       if (els.createButton.disabled) return;
-      els.modalBackdrop.classList.add("open");
+      openConfirmModal();
     });
 
     els.backToParseButton.addEventListener("click", () => {
@@ -1739,6 +1867,15 @@
         return;
       }
       goToStepAndRender(1);
+    });
+
+    els.continueToCheckoutButton.addEventListener("click", () => {
+      if (els.continueToCheckoutButton.disabled) return;
+      goToStepAndRender(4);
+    });
+
+    els.backToSummaryButton.addEventListener("click", () => {
+      goToStepAndRender(3);
     });
 
     els.cancelCreateButton.addEventListener("click", () => {
@@ -1755,9 +1892,13 @@
       const sequence = String(state.orderSequence).padStart(4, "0");
       state.orderCreatedId = `ORD-2026-${sequence}`;
       state.orderSequence += 1;
-      els.modalBackdrop.classList.remove("open");
       render();
-      showToast(`Order created: ${state.orderCreatedId}`);
+      showModalSuccessState();
+    });
+
+    els.returnToParseButton.addEventListener("click", () => {
+      els.modalBackdrop.classList.remove("open");
+      goToStepAndRender(1);
     });
 
     render();
