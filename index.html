@@ -170,6 +170,62 @@
       gap: 10px;
     }
 
+    .search-input-wrap {
+      position: relative;
+    }
+
+    .search-clear-btn {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 22px;
+      height: 22px;
+      border: 1px solid #d1d5db;
+      background: #fff;
+      color: #6b7280;
+      border-radius: 999px;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 0;
+      font-size: 13px;
+    }
+
+    .search-clear-btn.hidden {
+      display: none;
+    }
+
+    .search-input-wrap input {
+      padding-right: 40px;
+    }
+
+    .category-chips {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    .category-chip {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .category-chip.active {
+      border-color: rgba(37, 99, 235, 0.4);
+      background: var(--accent-soft);
+      color: var(--accent-deep);
+    }
+
     input,
     textarea,
     button {
@@ -548,9 +604,13 @@
     .selected-actions {
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      justify-content: flex-end;
       gap: 12px;
       flex-wrap: wrap;
+    }
+
+    .selected-top .stepper {
+      flex-shrink: 0;
     }
 
     .shipping-input-wrap {
@@ -620,6 +680,100 @@
       pointer-events: none;
       transition: opacity 220ms ease, transform 220ms ease;
       max-width: min(360px, calc(100vw - 32px));
+    }
+
+    .selected-dock {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 10px 16px;
+      background: rgba(255, 255, 255, 0.96);
+      border-top: 1px solid var(--line);
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
+      z-index: 30;
+      backdrop-filter: blur(5px);
+    }
+
+    .page#stepOnePage .stage {
+      padding-bottom: 84px;
+    }
+
+    .page#stepOnePage .search-results-list {
+      padding-bottom: 18px;
+    }
+
+    .selected-dock-items {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      white-space: nowrap;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      padding-bottom: 2px;
+    }
+
+    .selected-dock-items::-webkit-scrollbar {
+      display: none;
+    }
+
+    .selected-dock-item {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 8px 4px 4px;
+      border-radius: 8px;
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--ink);
+      flex-shrink: 0;
+      text-decoration: none;
+    }
+
+    .selected-dock-image {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      object-fit: cover;
+      border: 1px solid #dbe2ea;
+      background: #f1f5f9;
+      flex-shrink: 0;
+    }
+
+    .selected-dock-quantity {
+      letter-spacing: 0.01em;
+      text-decoration: none;
+    }
+
+    .selected-dock-remove {
+      appearance: none;
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      width: 16px;
+      height: 16px;
+      border: 1px solid #d1d5db;
+      background: #fff;
+      color: #4b5563;
+      border-radius: 999px;
+      line-height: 1;
+      font-size: 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 0;
+      text-decoration: none;
     }
 
     .toast.show {
@@ -727,6 +881,12 @@
       .modal-actions .btn {
         width: 100%;
       }
+
+      .page#stepOnePage .stage {
+        padding-bottom: 96px;
+      }
+
+      .selected-dock { bottom: 0; padding: 10px; }
     }
   </style>
 </head>
@@ -756,8 +916,17 @@
 
               <div class="tool-shell product-module">
                 <div>
-                  <label for="searchInput">Search Products</label>
-                  <input id="searchInput" type="text" placeholder="Search by product name..." autocomplete="off">
+                  <div class="search-input-wrap">
+                    <input id="searchInput" type="text" placeholder="Search by product name..." autocomplete="off">
+                    <button class="search-clear-btn hidden" id="searchClearButton" type="button" aria-label="Clear search">×</button>
+                  </div>
+                  <div class="category-chips" id="categoryChips">
+                    <button class="category-chip active" type="button" data-category="">All</button>
+                    <button class="category-chip" type="button" data-category="women">women</button>
+                    <button class="category-chip" type="button" data-category="men">men</button>
+                    <button class="category-chip" type="button" data-category="kids">kids</button>
+                    <button class="category-chip" type="button" data-category="accessories">Accessories</button>
+                  </div>
                   <p class="hint" id="searchHint">Type to filter products by name.</p>
                 </div>
 
@@ -768,9 +937,6 @@
                   </div>
                 </div>
 
-                <div class="page-actions">
-                  <button class="btn btn-primary" id="confirmProductsButton" type="button">Confirm</button>
-                </div>
               </div>
             </div>
           </section>
@@ -834,6 +1000,11 @@
     </main>
   </div>
 
+  <div class="selected-dock" id="selectedDock" aria-live="polite">
+    <div class="selected-dock-items" id="selectedDockItems"></div>
+    <button class="btn btn-primary" id="dockConfirmButton" type="button">Confirm</button>
+  </div>
+
   <div class="toast" id="toast"></div>
 
   <div class="modal-backdrop" id="modalBackdrop" role="presentation">
@@ -871,6 +1042,7 @@
       {
         id: "product_red_dress",
         name: "Red Dress",
+        category: "women",
         imageUrl: makeProductSvg("Red Dress", ["#e2664f", "#7f1d1d"]),
         variants: [
           { id: "variant_red_dress_s", color: "Red", size: "S", price: 12000, available: true },
@@ -882,6 +1054,7 @@
       {
         id: "product_black_bag",
         name: "Black Bag",
+        category: "accessories",
         imageUrl: makeProductSvg("Black Bag", ["#41454e", "#0f1115"]),
         variants: [
           { id: "variant_black_bag_default", color: "Black", size: "Default", price: 8000, available: true },
@@ -891,6 +1064,7 @@
       {
         id: "product_women_watch",
         name: "Women Watch",
+        category: "accessories",
         imageUrl: makeProductSvg("Women Watch", ["#d7b15c", "#6f7787"]),
         variants: [
           { id: "variant_gold_watch_default", color: "Gold", size: "Default", price: 9500, available: true },
@@ -902,6 +1076,7 @@
     const state = {
       currentStep: 1,
       searchTerm: "",
+      selectedCategory: "",
       variantSelections: {},
       selectedItems: new Map(),
       shippingFee: "",
@@ -919,13 +1094,17 @@
       stepOnePage: document.getElementById("stepOnePage"),
       stepTwoPage: document.getElementById("stepTwoPage"),
       searchInput: document.getElementById("searchInput"),
+      searchClearButton: document.getElementById("searchClearButton"),
+      categoryChips: document.getElementById("categoryChips"),
       searchHint: document.getElementById("searchHint"),
       aiInput: document.getElementById("aiInput"),
       aiHint: document.getElementById("aiHint"),
       parseButton: document.getElementById("parseButton"),
-      confirmProductsButton: document.getElementById("confirmProductsButton"),
+      dockConfirmButton: document.getElementById("dockConfirmButton"),
       backToProductsButton: document.getElementById("backToProductsButton"),
       productList: document.getElementById("productList"),
+      selectedDock: document.getElementById("selectedDock"),
+      selectedDockItems: document.getElementById("selectedDockItems"),
       selectedList: document.getElementById("selectedList"),
       shippingInput: document.getElementById("shippingInput"),
       shippingHint: document.getElementById("shippingHint"),
@@ -977,8 +1156,11 @@
 
     const getVisibleProducts = () => {
       const term = state.searchTerm.trim().toLowerCase();
-      if (!term) return products;
-      return products.filter((product) => product.name.toLowerCase().includes(term));
+      return products.filter((product) => {
+        const matchesTerm = !term || product.name.toLowerCase().includes(term);
+        const matchesCategory = !state.selectedCategory || product.category === state.selectedCategory;
+        return matchesTerm && matchesCategory;
+      });
     };
 
     const showToast = (message) => {
@@ -1292,18 +1474,35 @@
                   <h3 class="selected-title">${item.product.name}</h3>
                   <p class="selected-variant">${item.variant.color} / ${item.variant.size}</p>
                 </div>
-                <button class="btn btn-ghost" type="button" data-action="remove-item" data-variant-id="${item.variant.id}">Remove</button>
-              </div>
-              <p class="selected-price">${formatCurrency(item.variant.price)} x ${item.quantity} = ${formatCurrency(item.variant.price * item.quantity)}</p>
-              <div class="selected-actions">
                 <div class="stepper">
                   <button type="button" aria-label="Decrease quantity" data-action="decrement-item" data-variant-id="${item.variant.id}">-</button>
                   <span class="stepper-value">${item.quantity}</span>
                   <button type="button" aria-label="Increase quantity" data-action="increment-item" data-variant-id="${item.variant.id}">+</button>
                 </div>
               </div>
+              <p class="selected-price">${formatCurrency(item.variant.price)} x ${item.quantity} = ${formatCurrency(item.variant.price * item.quantity)}</p>
+              <div class="selected-actions">
+              </div>
             </div>
           </div>
+        </div>
+      `).join("");
+    };
+
+    const renderSelectedDock = () => {
+      els.selectedDock.style.display = state.currentStep === 1 ? "flex" : "none";
+      els.dockConfirmButton.disabled = state.selectedItems.size === 0;
+
+      if (state.selectedItems.size === 0) {
+        els.selectedDockItems.innerHTML = `<span class="selected-dock-quantity">No items selected</span>`;
+        return;
+      }
+
+      els.selectedDockItems.innerHTML = [...state.selectedItems.values()].map((item) => `
+        <div class="selected-dock-item" title="${item.product.name} / ${item.variant.color} / ${item.variant.size}">
+          <button class="selected-dock-remove" type="button" aria-label="Remove item" data-action="remove-item" data-variant-id="${item.variant.id}">×</button>
+          <img class="selected-dock-image" src="${item.product.imageUrl}" alt="${item.product.name}">
+          <span class="selected-dock-quantity">×${item.quantity}</span>
         </div>
       `).join("");
     };
@@ -1339,23 +1538,48 @@
       els.searchHint.textContent = state.searchTerm.trim()
         ? `${visibleProducts} product${visibleProducts === 1 ? "" : "s"} match the current search.`
         : "Type to filter products by name.";
+      els.searchClearButton.classList.toggle("hidden", !state.searchTerm.trim());
 
       const aiHasWarning = state.aiResult.message.includes("No confident product match");
       const aiHasSuccess = state.aiResult.message && !aiHasWarning && state.aiResult.message !== "Paste a customer message to suggest products.";
       els.aiHint.textContent = state.aiResult.message || "AI suggestions only assist selection. They do not add items automatically.";
       els.aiHint.className = `hint ${aiHasWarning ? "warning" : aiHasSuccess ? "success" : ""}`;
+
+      [...els.categoryChips.querySelectorAll(".category-chip")].forEach((chip) => {
+        chip.classList.toggle("active", chip.dataset.category === state.selectedCategory);
+      });
     };
 
     const render = () => {
       updateStepView();
       renderProducts();
       renderSelectedItems();
+      renderSelectedDock();
       renderSummary();
       renderHints();
     };
 
+    const goToStepAndRender = (step) => {
+      goToStep(step);
+      render();
+    };
+
     els.searchInput.addEventListener("input", (event) => {
       state.searchTerm = event.target.value;
+      render();
+    });
+
+    els.searchClearButton.addEventListener("click", () => {
+      state.searchTerm = "";
+      els.searchInput.value = "";
+      render();
+      els.searchInput.focus();
+    });
+
+    els.categoryChips.addEventListener("click", (event) => {
+      const button = event.target.closest("button");
+      if (!button) return;
+      state.selectedCategory = button.dataset.category || "";
       render();
     });
 
@@ -1367,14 +1591,12 @@
       }
       applyAiSelections();
       state.orderCreatedId = "";
-      render();
-      goToStep(2);
+      goToStepAndRender(2);
     });
 
-    els.confirmProductsButton.addEventListener("click", () => {
+    els.dockConfirmButton.addEventListener("click", () => {
       state.orderCreatedId = "";
-      render();
-      goToStep(2);
+      goToStepAndRender(2);
     });
 
     els.productList.addEventListener("click", (event) => {
@@ -1421,6 +1643,14 @@
       if (action === "remove-item") removeItem(variantId);
     });
 
+    els.selectedDockItems.addEventListener("click", (event) => {
+      const button = event.target.closest("button");
+      if (!button) return;
+      if (button.dataset.action === "remove-item") {
+        removeItem(button.dataset.variantId);
+      }
+    });
+
     els.shippingInput.addEventListener("input", (event) => {
       const value = event.target.value;
       state.shippingFee = value === "" ? "" : String(Math.max(0, Number(value)));
@@ -1444,8 +1674,7 @@
     });
 
     els.backToProductsButton.addEventListener("click", () => {
-      render();
-      goToStep(1);
+      goToStepAndRender(1);
     });
 
     els.cancelCreateButton.addEventListener("click", () => {
